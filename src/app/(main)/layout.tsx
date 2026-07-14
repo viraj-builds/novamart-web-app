@@ -1,0 +1,105 @@
+"use client";
+
+import { useEffect } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { Bell, Home, ShoppingBag, Heart, UserRound, SlidersHorizontal } from "lucide-react";
+import { Providers } from "@/app/Providers";
+import { useStore } from "@/store/store";
+import { useAuth } from "@/lib/use-auth";
+
+export default function MainLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user, loading, logout } = useAuth();
+  const cartCount = useStore((state) => state.cart.reduce((sum, item) => sum + item.quantity, 0));
+  const wishlistCount = useStore((state) => state.wishlist.length);
+  const navItems = [
+    { href: "/", label: "Home", icon: Home },
+    { href: "/cart", label: "Cart", icon: ShoppingBag },
+    { href: "/wishlist", label: "Wishlist", icon: Heart },
+    { href: user ? "/profile" : "/login", label: user ? "Profile" : "Login", icon: UserRound },
+  ];
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/login");
+    }
+  }, [loading, user, router]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen bg-[#050816] text-slate-100">
+        <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
+          <div className="rounded-3xl border border-white/10 bg-[#111827] p-10 text-slate-300 shadow-lg">
+            <p className="text-lg font-medium">Checking your login status...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Providers>
+      <div className="min-h-screen bg-[#050816] text-slate-100">
+        <header className="sticky top-0 z-30 border-b border-white/10 bg-[#050816]/90 backdrop-blur">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-lg font-semibold text-white">
+                N
+              </div>
+              <div>
+                <p className="text-lg font-semibold tracking-wide">NovaMart</p>
+                <p className="text-sm text-slate-400">Shop everything you want</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              {navItems.map(({ href, label }) => {
+                const active = pathname === href;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`rounded-full px-4 py-2 text-sm font-medium ${active ? "bg-orange-500 text-black" : "bg-white/5 text-slate-200 hover:bg-white/10"}`}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-3">
+              <button className="rounded-full border border-white/10 bg-white/5 p-2.5" aria-label="Notifications">
+                <Bell size={18} />
+              </button>
+              <button className="rounded-full border border-white/10 bg-white/5 p-2.5" aria-label="Filters">
+                <SlidersHorizontal size={18} />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="mx-auto flex max-w-7xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+
+        <nav className="sticky bottom-0 z-30 border-t border-white/10 bg-[#050816]/95 backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-7xl items-center justify-around px-2 py-2">
+            {navItems.map(({ href, label, icon: Icon }) => {
+              const active = pathname === href;
+              const badge = href === "/cart" ? cartCount : href === "/wishlist" ? wishlistCount : 0;
+              return (
+                <Link key={href} href={href} className={`relative flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-xs font-medium ${active ? "text-orange-400" : "text-slate-400"}`}>
+                  <Icon size={18} />
+                  <span>{label}</span>
+                  {badge > 0 && (
+                    <span className="absolute right-1 top-0 rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      {badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      </div>
+    </Providers>
+  );
+}
