@@ -30,6 +30,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
         clevertap.privacy.push({ useIP: false });
         clevertap.spa = true;
         clevertap.init(accountId, region);
+
+        clevertap.notifications.push({
+          "titleText": "Would you like to receive Push Notifications?",
+          "bodyText": "We promise to only send you relevant updates.",
+          "okButtonText": "Ok",
+          "rejectButtonText": "Cancel",
+          "askAgainTimeInSeconds": 5,
+          "serviceWorkerPath": "/clevertap_sw.js"
+        });
         console.info("CleverTap initialized", { accountId, region });
       } catch (error) {
         console.warn("CleverTap initialization failed:", error);

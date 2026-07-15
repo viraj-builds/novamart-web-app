@@ -14,6 +14,7 @@ type StoreState = {
   removeFromCart: (id: number) => void;
   toggleWishlist: (id: number) => void;
   removeFromWishlist: (id: number) => void;
+  clearCart: () => void;
 };
 
 export const useStore = create<StoreState>()(
@@ -21,7 +22,22 @@ export const useStore = create<StoreState>()(
     (set) => ({
       cart: [],
       wishlist: [],
-      addToCart: (product) =>
+      addToCart: async (product) => {
+        // Track Add to Cart in CleverTap
+        if (typeof window !== "undefined") {
+          try {
+            const clevertap = (await import("clevertap-web-sdk")).default;
+            clevertap.event.push("Add to Cart", {
+              "Product ID": product.id,
+              "Product Name": product.name,
+              "Price": product.price,
+              "Category": product.category,
+            });
+          } catch (e) {
+            console.warn("Failed to log CleverTap event", e);
+          }
+        }
+
         set((state) => {
           const existing = state.cart.find((item) => item.id === product.id);
           if (existing) {
@@ -32,7 +48,8 @@ export const useStore = create<StoreState>()(
             };
           }
           return { cart: [...state.cart, { ...product, quantity: 1 }] };
-        }),
+        });
+      },
       updateQuantity: (id, quantity) =>
         set((state) => ({
           cart: state.cart
@@ -49,6 +66,7 @@ export const useStore = create<StoreState>()(
         })),
       removeFromWishlist: (id) =>
         set((state) => ({ wishlist: state.wishlist.filter((itemId) => itemId !== id) })),
+      clearCart: () => set({ cart: [] }),
     }),
     { name: "novamart-store" }
   )

@@ -12,6 +12,7 @@ import {
   type User,
 } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { useStore } from "@/store/store";
 
 function getAuthErrorMessage(error: unknown) {
   if (error instanceof FirebaseError) {
@@ -64,6 +65,7 @@ async function sendCleverTapLogin(user: User, email: string) {
         Identity: user.uid,
         Email: email,
         Name: email,
+        "MSG-push": true,
       },
     });
   } catch (error) {
@@ -122,6 +124,7 @@ export function useAuth() {
   async function logout() {
     const auth = getFirebaseAuth();
     await signOut(auth);
+    useStore.getState().clearCart();
   }
 
   return { user, loading, login, register, logout };
