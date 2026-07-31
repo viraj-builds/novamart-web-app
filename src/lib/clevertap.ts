@@ -8,6 +8,8 @@ export interface CleverTapWeb {
   pageChanged?: () => void;
   toggleInbox?: (options?: unknown) => void;
   enableWebPush?: (enabled: boolean, key?: string) => void;
+  getInboxMessageUnreadCount?: () => number;
+  getInboxMessageCount?: () => number;
   renderNotificationViewed?: (payload: { msgId: string; pivotId?: string }) => void;
   [key: string]: unknown;
 }

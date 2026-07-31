@@ -8,6 +8,8 @@ declare module "clevertap-web-sdk" {
     init: (accountId: string, region?: string, targetDomain?: string, token?: string, config?: Record<string, unknown>) => void;
     toggleInbox?: (options?: unknown) => void;
     enableWebPush?: (enabled: boolean, key?: string) => void;
+    getInboxMessageUnreadCount?: () => number;
+    getInboxMessageCount?: () => number;
     renderNotificationViewed?: (payload: { msgId: string; pivotId?: string }) => void;
     [key: string]: unknown;
   }

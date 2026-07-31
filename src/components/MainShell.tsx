@@ -7,6 +7,7 @@ import { Bell, Home, ShoppingBag, Heart, UserRound, SlidersHorizontal } from "lu
 import { Providers } from "@/app/Providers";
 import { useStore } from "@/store/store";
 import { useAuth } from "@/lib/use-auth";
+import { useInboxUnreadCount } from "@/lib/use-inbox-unread";
 
 export function MainShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -14,6 +15,7 @@ export function MainShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const cartCount = useStore((state) => state.cart.reduce((sum, item) => sum + item.quantity, 0));
   const wishlistCount = useStore((state) => state.wishlist.length);
+  const { unreadCount, refresh: refreshUnreadCount } = useInboxUnreadCount();
   const navItems = [
     { href: "/", label: "Home", icon: Home },
     { href: "/cart", label: "Cart", icon: ShoppingBag },
@@ -83,9 +85,19 @@ export function MainShell({ children }: { children: React.ReactNode }) {
                 type="button"
                 id="clevertap-web-inbox"
                 className="relative rounded-full border border-white/10 bg-white/5 p-2.5"
-                aria-label="Open web inbox"
+                aria-label={
+                  unreadCount > 0
+                    ? `Open web inbox, ${unreadCount} unread`
+                    : "Open web inbox"
+                }
+                onClick={() => window.setTimeout(refreshUnreadCount, 500)}
               >
                 <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </button>
               <button className="rounded-full border border-white/10 bg-white/5 p-2.5" aria-label="Filters">
                 <SlidersHorizontal size={18} />
