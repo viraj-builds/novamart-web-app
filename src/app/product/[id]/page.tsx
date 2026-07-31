@@ -20,7 +20,7 @@ export default function ProductDetailPage() {
 
     async function loadProduct() {
       try {
-        const response = await fetch("/api/products", { cache: "force-cache" });
+        const response = await fetch("/api/products");
         if (!response.ok) return;
         const data = await response.json();
         const match = data.products?.find((item: Product) => item.id === id) ?? null;

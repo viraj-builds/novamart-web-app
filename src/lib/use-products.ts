@@ -27,7 +27,7 @@ export function useProducts(pageSize = 6) {
 
       let data: unknown;
       try {
-        const response = await fetch("/api/products", { cache: "force-cache" });
+        const response = await fetch("/api/products");
         data = await response.json();
         if (!response.ok) {
           throw new Error(`Products API responded with ${response.status}`);

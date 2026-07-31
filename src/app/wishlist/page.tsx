@@ -15,7 +15,7 @@ export default function WishlistPage() {
 
   useEffect(() => {
     async function loadProducts() {
-      const response = await fetch("/api/products", { cache: "force-cache" });
+      const response = await fetch("/api/products");
       const data = await response.json();
       setProducts(data.products ?? []);
     }

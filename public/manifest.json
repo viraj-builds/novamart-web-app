@@ -1,0 +1,9 @@
+{
+  "name": "NovaMart",
+  "short_name": "NovaMart",
+  "description": "Shop everything you want",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050816",
+  "theme_color": "#050816"
+}

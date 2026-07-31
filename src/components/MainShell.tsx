@@ -7,7 +7,6 @@ import { Bell, Home, ShoppingBag, Heart, UserRound, SlidersHorizontal } from "lu
 import { Providers } from "@/app/Providers";
 import { useStore } from "@/store/store";
 import { useAuth } from "@/lib/use-auth";
-import { openCleverTapInbox } from "@/lib/clevertap";
 
 export function MainShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -71,11 +70,20 @@ export function MainShell({ children }: { children: React.ReactNode }) {
                   </Link>
                 );
               })}
+              {/*
+                This id must match the "Element ID" set on the Web Inbox campaign in
+                the CleverTap dashboard. The SDK attaches its own document click
+                listener, works out the anchor's position from the click event, and
+                toggles the inbox itself — and it hangs the unread badge here too.
+                Do NOT add an onClick calling clevertap.toggleInbox(): called without
+                an event it throws "Cannot read properties of undefined (reading
+                'rect')" inside setInboxPosition.
+              */}
               <button
                 type="button"
-                className="rounded-full border border-white/10 bg-white/5 p-2.5"
+                id="clevertap-web-inbox"
+                className="relative rounded-full border border-white/10 bg-white/5 p-2.5"
                 aria-label="Open web inbox"
-                onClick={() => openCleverTapInbox()}
               >
                 <Bell size={18} />
               </button>

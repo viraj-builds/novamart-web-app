@@ -77,6 +77,20 @@ export async function promptForWebPush() {
 
   const apnsWebPushId = process.env.NEXT_PUBLIC_CLEVERTAP_APNS_WEB_PUSH_ID;
   const apnsWebPushServiceUrl = process.env.NEXT_PUBLIC_CLEVERTAP_APNS_SERVICE_URL;
+  const vapidPublicKey = process.env.NEXT_PUBLIC_CLEVERTAP_VAPID_PUBLIC_KEY;
+
+  // The SDK normally receives the application server (VAPID) key from CleverTap's
+  // own response. If the dashboard has not published one, pushManager.subscribe()
+  // is called without it and the browser rejects with
+  // "Registration failed - missing applicationServerKey". Supplying it here is the
+  // supported override for that case.
+  if (vapidPublicKey && typeof clevertap.enableWebPush === "function") {
+    try {
+      clevertap.enableWebPush(true, vapidPublicKey);
+    } catch (error) {
+      console.warn("Failed to set the CleverTap web push VAPID key:", error);
+    }
+  }
 
   try {
     clevertap.notifications.push({
@@ -120,25 +134,10 @@ export async function sendCleverTapLoginProfile(profile: Record<string, unknown>
   }
 }
 
-export async function openCleverTapInbox() {
-  const clevertap = await getCleverTapInstance();
-  if (!clevertap) {
-    return;
-  }
-
-  try {
-    if (typeof clevertap.toggleInbox === "function") {
-      clevertap.toggleInbox();
-      return;
-    }
-
-    if (typeof window !== "undefined" && typeof window.clevertap?.toggleInbox === "function") {
-      window.clevertap.toggleInbox();
-      return;
-    }
-
-    console.warn("CleverTap inbox is not ready yet.");
-  } catch (error) {
-    console.warn("Failed to open CleverTap inbox:", error);
-  }
-}
+/*
+ * There is deliberately no openInbox() helper here. `clevertap.toggleInbox()`
+ * derives the inbox position from the click event it is passed; calling it with no
+ * argument throws inside setInboxPosition. The supported integration is to give the
+ * trigger element the id configured on the campaign and let the SDK's own document
+ * click listener handle it — see the bell button in MainShell.
+ */

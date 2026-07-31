@@ -16,6 +16,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "NovaMart",
   description: "A dark-themed e-commerce experience built with Next.js and Unsplash",
+  // Web push subscription fails with "manifest empty or missing" when the page has none.
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -30,13 +32,6 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <MainShell>{children}</MainShell>
-        {/*
-          Anchor for the CleverTap Web Inbox. The id must match the "Element ID"
-          configured in the CleverTap dashboard (currently `clevertap-web-inbox`).
-          The SDK resolves it once, when <ct-web-inbox> is attached, and never
-          retries — so it has to live outside the auth-gated shell.
-        */}
-        <div id="clevertap-web-inbox" />
       </body>
     </html>
   );

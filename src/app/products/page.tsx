@@ -14,7 +14,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     async function loadProducts() {
-      const response = await fetch("/api/products", { cache: "force-cache" });
+      const response = await fetch("/api/products");
       const data = (await response.json()) as { products?: Product[]; categories?: unknown[] };
       const normalizedProducts = (data.products ?? []).map((product) => ({
         ...product,

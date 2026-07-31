@@ -61,7 +61,7 @@ function getApiBaseUrl(): string {
 }
 
 export async function getProducts(): Promise<ProductsResponse> {
-  const response = await fetch(`${getApiBaseUrl()}/api/products`, { cache: "force-cache" });
+  const response = await fetch(`${getApiBaseUrl()}/api/products`);
 
   if (!response.ok) {
     return { products: [], categories: [] };
