@@ -9,6 +9,9 @@ import {
   reRegisterWebPushForCurrentUser,
 } from "@/lib/clevertap";
 
+/** Time for CleverTap's response — which carries the VAPID key — to land after init. */
+const PUSH_CONFIG_SETTLE_MS = 3000;
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
@@ -29,6 +32,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     const resolvedAccountId = accountId;
     let isMounted = true;
+    let pushTimer: number | undefined;
 
     async function initClient() {
       if (!isMounted) return;
@@ -37,8 +41,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
       // Already opted in: don't re-ask, just make sure the token is attached to
       // whichever profile the SDK is currently on.
+      //
+      // This has to wait for CleverTap's own response to land. On a repeat visit
+      // the "config received" flags are already true in localStorage, so the SDK
+      // subscribes immediately — but its in-memory VAPID key is still null until
+      // that response calls enableWebPush, and the subscribe then fails with
+      // "missing applicationServerKey".
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        await reRegisterWebPushForCurrentUser();
+        pushTimer = window.setTimeout(() => {
+          void reRegisterWebPushForCurrentUser();
+        }, PUSH_CONFIG_SETTLE_MS);
         return;
       }
 
@@ -49,6 +61,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     return () => {
       isMounted = false;
+      if (pushTimer !== undefined) window.clearTimeout(pushTimer);
     };
   }, []);
 

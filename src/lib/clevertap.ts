@@ -71,28 +71,47 @@ export async function initCleverTap(accountId: string, region = "eu1") {
  * When the dashboard uses the "new" web push box, its title/body/button copy comes
  * from the dashboard; the values below only apply to the legacy box.
  */
+function getApnsConfig() {
+  const apnsWebPushId = process.env.NEXT_PUBLIC_CLEVERTAP_APNS_WEB_PUSH_ID;
+  const apnsWebPushServiceUrl = process.env.NEXT_PUBLIC_CLEVERTAP_APNS_SERVICE_URL;
+  // Safari on macOS needs both APNs values; omitting them leaves Safari unsupported.
+  return apnsWebPushId && apnsWebPushServiceUrl ? { apnsWebPushId, apnsWebPushServiceUrl } : {};
+}
+
+/**
+ * The application server (VAPID) key normally arrives from CleverTap's own response,
+ * which calls `enableWebPush(enabled, key)` and only then populates the SDK's
+ * internal key. Anything that subscribes before that lands calls
+ * pushManager.subscribe() with no key and the browser rejects with
+ * "Registration failed - missing applicationServerKey".
+ *
+ * Applying the env key first makes the subscribe independent of that timing.
+ */
+function applyVapidKey(clevertap: CleverTapWeb) {
+  const vapidPublicKey = process.env.NEXT_PUBLIC_CLEVERTAP_VAPID_PUBLIC_KEY;
+  if (!vapidPublicKey || typeof clevertap.enableWebPush !== "function") {
+    return;
+  }
+
+  try {
+    clevertap.enableWebPush(true, vapidPublicKey);
+  } catch (error) {
+    console.warn("Failed to set the CleverTap web push VAPID key:", error);
+  }
+}
+
 export async function promptForWebPush() {
   const clevertap = await getCleverTapInstance();
   if (!clevertap) {
     return;
   }
 
-  const apnsWebPushId = process.env.NEXT_PUBLIC_CLEVERTAP_APNS_WEB_PUSH_ID;
-  const apnsWebPushServiceUrl = process.env.NEXT_PUBLIC_CLEVERTAP_APNS_SERVICE_URL;
-  const vapidPublicKey = process.env.NEXT_PUBLIC_CLEVERTAP_VAPID_PUBLIC_KEY;
+  const { apnsWebPushId, apnsWebPushServiceUrl } = getApnsConfig() as {
+    apnsWebPushId?: string;
+    apnsWebPushServiceUrl?: string;
+  };
 
-  // The SDK normally receives the application server (VAPID) key from CleverTap's
-  // own response. If the dashboard has not published one, pushManager.subscribe()
-  // is called without it and the browser rejects with
-  // "Registration failed - missing applicationServerKey". Supplying it here is the
-  // supported override for that case.
-  if (vapidPublicKey && typeof clevertap.enableWebPush === "function") {
-    try {
-      clevertap.enableWebPush(true, vapidPublicKey);
-    } catch (error) {
-      console.warn("Failed to set the CleverTap web push VAPID key:", error);
-    }
-  }
+  applyVapidKey(clevertap);
 
   try {
     clevertap.notifications.push({
@@ -137,14 +156,14 @@ export async function reRegisterWebPushForCurrentUser() {
     return;
   }
 
-  const apnsWebPushId = process.env.NEXT_PUBLIC_CLEVERTAP_APNS_WEB_PUSH_ID;
-  const apnsWebPushServiceUrl = process.env.NEXT_PUBLIC_CLEVERTAP_APNS_SERVICE_URL;
+  // Must run before notifications.push, or the subscribe can go out without a key.
+  applyVapidKey(clevertap);
 
   try {
     clevertap.notifications.push({
       skipDialog: true,
       serviceWorkerPath: "/clevertap_sw.js",
-      ...(apnsWebPushId && apnsWebPushServiceUrl ? { apnsWebPushId, apnsWebPushServiceUrl } : {}),
+      ...getApnsConfig(),
     });
   } catch (error) {
     console.warn("Failed to re-register the CleverTap web push token:", error);
