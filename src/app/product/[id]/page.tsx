@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ShoppingCart, Star } from "lucide-react";
 import { formatCategoryLabel, getDiscountedPrice, type Product } from "@/lib/products";
+import { trackCleverTapEvent } from "@/lib/clevertap";
 import { useStore } from "@/store/store";
 
 export default function ProductDetailPage() {
@@ -30,6 +31,17 @@ export default function ProductDetailPage() {
   if (!product) {
     return null;
   }
+
+  const handleAddToCart = async () => {
+    addToCart(product);
+    await trackCleverTapEvent("Add to Cart", {
+      "Product Name": product.name,
+      Price: product.price,
+      Category: product.category,
+      Brand: product.brand,
+      "Discount Percent": product.discountPercent,
+    });
+  };
 
   return (
     <div className="grid gap-8 rounded-[28px] border border-white/10 bg-[#111827] p-4 md:grid-cols-[1.1fr_0.9fr] md:p-8">
@@ -78,7 +90,7 @@ export default function ProductDetailPage() {
         </div>
         <button
           type="button"
-          onClick={() => addToCart(product)}
+          onClick={handleAddToCart}
           className="mt-6 flex items-center justify-center gap-2 rounded-full bg-orange-500 px-4 py-3 font-semibold text-white"
         >
           <ShoppingCart size={18} />

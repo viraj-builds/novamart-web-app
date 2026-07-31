@@ -77,34 +77,39 @@ function normalizeProduct(product: FakeStoreProduct | DummyJsonProduct, source: 
   };
 }
 
-async function fetchProducts() {
-  const [fakeStoreRes, dummyJsonRes] = await Promise.all([
-    fetch("https://fakestoreapi.com/products", { next: { revalidate: 3600 } }),
-    fetch("https://dummyjson.com/products?limit=100", { next: { revalidate: 3600 } }),
-  ]);
+async function fetchProducts(): Promise<Product[]> {
+  try {
+    const [fakeStoreRes, dummyJsonRes] = await Promise.all([
+      fetch("https://fakestoreapi.com/products", { next: { revalidate: 3600 } }),
+      fetch("https://dummyjson.com/products?limit=100", { next: { revalidate: 3600 } }),
+    ]);
 
-  const fakeStoreData = await fakeStoreRes.json();
-  const dummyJsonData = await dummyJsonRes.json();
+    const fakeStoreData = await fakeStoreRes.json();
+    const dummyJsonData = await dummyJsonRes.json();
 
-  const normalized = [
-    ...fakeStoreData.map((item: FakeStoreProduct) => normalizeProduct(item, "fakestore")),
-    ...dummyJsonData.products.map((item: DummyJsonProduct) => normalizeProduct(item, "dummyjson")),
-  ];
+    const normalized = [
+      ...fakeStoreData.map((item: FakeStoreProduct) => normalizeProduct(item, "fakestore")),
+      ...dummyJsonData.products.map((item: DummyJsonProduct) => normalizeProduct(item, "dummyjson")),
+    ];
 
-  const uniqueById = new Map<number, Product>();
-  normalized.forEach((item) => {
-    if (!uniqueById.has(item.id)) {
-      uniqueById.set(item.id, item);
+    const uniqueById = new Map<number, Product>();
+    normalized.forEach((item) => {
+      if (!uniqueById.has(item.id)) {
+        uniqueById.set(item.id, item);
+      }
+    });
+
+    const products = Array.from(uniqueById.values());
+    for (let i = products.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [products[i], products[j]] = [products[j], products[i]];
     }
-  });
 
-  const products = Array.from(uniqueById.values());
-  for (let i = products.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [products[i], products[j]] = [products[j], products[i]];
+    return products;
+  } catch (error) {
+    console.error("Failed to fetch external product sources:", error);
+    return [];
   }
-
-  return products;
 }
 
 function normalizeCategory(value: string | DummyCategory): string {
