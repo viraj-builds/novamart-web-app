@@ -3,7 +3,11 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useStore } from "@/store/store";
-import { initCleverTap, promptForWebPush } from "@/lib/clevertap";
+import {
+  initCleverTap,
+  promptForWebPush,
+  reRegisterWebPushForCurrentUser,
+} from "@/lib/clevertap";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -30,6 +34,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
       if (!isMounted) return;
       await initCleverTap(resolvedAccountId, region);
       if (!isMounted) return;
+
+      // Already opted in: don't re-ask, just make sure the token is attached to
+      // whichever profile the SDK is currently on.
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        await reRegisterWebPushForCurrentUser();
+        return;
+      }
+
       await promptForWebPush();
     }
 

@@ -110,6 +110,47 @@ export async function promptForWebPush() {
   }
 }
 
+/**
+ * Re-attaches the push subscription to the profile that onUserLogin just switched to.
+ *
+ * This is not optional. When onUserLogin changes the identity, the SDK swaps the
+ * guid and calls `unregisterTokenForGuid(previousGuid)` — it strips the push token
+ * off the profile it was registered against. Nothing in the SDK ever re-registers
+ * it, so a user who allowed notifications while anonymous ends up signed in with
+ * NO token, and every push campaign reports "Push Unregistered from the profile".
+ *
+ * `skipDialog: true` goes straight to the subscription without re-showing the
+ * opt-in box — the SDK uses the same trick internally after an unsubscribe.
+ */
+export async function reRegisterWebPushForCurrentUser() {
+  if (typeof window === "undefined" || typeof Notification === "undefined") {
+    return;
+  }
+
+  // Nothing to re-register unless the user already granted permission.
+  if (Notification.permission !== "granted") {
+    return;
+  }
+
+  const clevertap = await getCleverTapInstance();
+  if (!clevertap) {
+    return;
+  }
+
+  const apnsWebPushId = process.env.NEXT_PUBLIC_CLEVERTAP_APNS_WEB_PUSH_ID;
+  const apnsWebPushServiceUrl = process.env.NEXT_PUBLIC_CLEVERTAP_APNS_SERVICE_URL;
+
+  try {
+    clevertap.notifications.push({
+      skipDialog: true,
+      serviceWorkerPath: "/clevertap_sw.js",
+      ...(apnsWebPushId && apnsWebPushServiceUrl ? { apnsWebPushId, apnsWebPushServiceUrl } : {}),
+    });
+  } catch (error) {
+    console.warn("Failed to re-register the CleverTap web push token:", error);
+  }
+}
+
 export async function trackCleverTapEvent(eventName: string, properties?: Record<string, unknown>) {
   const clevertap = await getCleverTapInstance();
   if (!clevertap) {

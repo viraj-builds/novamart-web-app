@@ -41,7 +41,17 @@ function getAuthErrorMessage(error: unknown) {
   return "Unable to authenticate.";
 }
 
-import { sendCleverTapLoginProfile, trackCleverTapEvent } from "@/lib/clevertap";
+import {
+  reRegisterWebPushForCurrentUser,
+  sendCleverTapLoginProfile,
+  trackCleverTapEvent,
+} from "@/lib/clevertap";
+
+/**
+ * onUserLogin swaps the guid on the server round-trip, so the push token has to be
+ * re-registered *after* that has landed. There is no callback for it, hence the wait.
+ */
+const GUID_SWITCH_SETTLE_MS = 2500;
 
 /**
  * `onUserLogin.push` only identifies the profile — it does NOT raise an event.
@@ -62,6 +72,12 @@ async function sendCleverTapLogin(user: User, email: string, eventName: string) 
     "Login Method": "Email",
     Email: email,
   });
+
+  // Re-attach the push token to the profile we just switched to, otherwise every
+  // push campaign that qualifies on this event has nothing to deliver to.
+  window.setTimeout(() => {
+    void reRegisterWebPushForCurrentUser();
+  }, GUID_SWITCH_SETTLE_MS);
 }
 
 export function useAuth() {
