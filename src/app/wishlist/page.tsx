@@ -5,7 +5,7 @@ import { ShoppingCart } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { type Product } from "@/lib/products";
 import { useStore } from "@/store/store";
-import { trackCleverTapEvent } from "@/lib/clevertap";
+import { trackRemovedFromWishlist } from "@/lib/clevertap-events";
 
 export default function WishlistPage() {
   const wishlist = useStore((state) => state.wishlist);
@@ -43,21 +43,19 @@ export default function WishlistPage() {
               <p className="text-sm text-slate-400">{item.brand}</p>
             </div>
             <div className="flex gap-2">
-              <button className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200" onClick={() => removeFromWishlist(item.id)}>
+              <button
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200"
+                onClick={() => {
+                  removeFromWishlist(item.id);
+                  void trackRemovedFromWishlist(item);
+                }}
+              >
                 Remove
               </button>
+              {/* addToCart raises the CleverTap event itself. */}
               <button
                 className="flex items-center gap-2 rounded-full bg-orange-500 px-3 py-2 text-sm font-semibold text-white"
-                onClick={async () => {
-                  addToCart(item);
-                  await trackCleverTapEvent("Add to Cart", {
-                    "Product Name": item.name,
-                    Price: item.price,
-                    Category: item.category,
-                    Brand: item.brand,
-                    "Discount Percent": item.discountPercent,
-                  });
-                }}
+                onClick={() => addToCart(item)}
               >
                 <ShoppingCart size={16} /> Add
               </button>

@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { trackCleverTapEvent } from "@/lib/clevertap";
+import { trackAddToCart, trackRemoveFromCart } from "@/lib/clevertap-events";
 import type { Product } from "@/lib/products";
 
 type CartItem = Product & { quantity: number };
@@ -23,13 +23,10 @@ export const useStore = create<StoreState>()(
     (set) => ({
       cart: [],
       wishlist: [],
-      addToCart: async (product) => {
-        void trackCleverTapEvent("Add to Cart", {
-          "Product ID": product.id,
-          "Product Name": product.name,
-          Price: product.price,
-          Category: product.category,
-        });
+      // "Add to Cart" is raised here and nowhere else. It used to fire from the
+      // store *and* from each call site, which sent two events per click.
+      addToCart: (product) => {
+        void trackAddToCart(product);
 
         set((state) => {
           const existing = state.cart.find((item) => item.id === product.id);
@@ -50,7 +47,13 @@ export const useStore = create<StoreState>()(
             .filter((item) => item.quantity > 0),
         })),
       removeFromCart: (id) =>
-        set((state) => ({ cart: state.cart.filter((item) => item.id !== id) })),
+        set((state) => {
+          const removed = state.cart.find((item) => item.id === id);
+          if (removed) {
+            void trackRemoveFromCart(removed);
+          }
+          return { cart: state.cart.filter((item) => item.id !== id) };
+        }),
       toggleWishlist: (id) =>
         set((state) => ({
           wishlist: state.wishlist.includes(id)

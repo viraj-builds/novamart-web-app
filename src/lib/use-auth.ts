@@ -41,9 +41,14 @@ function getAuthErrorMessage(error: unknown) {
   return "Unable to authenticate.";
 }
 
-import { sendCleverTapLoginProfile } from "@/lib/clevertap";
+import { sendCleverTapLoginProfile, trackCleverTapEvent } from "@/lib/clevertap";
 
-async function sendCleverTapLogin(user: User, email: string) {
+/**
+ * `onUserLogin.push` only identifies the profile — it does NOT raise an event.
+ * A campaign that qualifies on "User Logged In" will never fire unless the app
+ * raises that event explicitly, which is what the second call here does.
+ */
+async function sendCleverTapLogin(user: User, email: string, eventName: string) {
   await sendCleverTapLoginProfile({
     Site: {
       Identity: user.uid,
@@ -51,6 +56,11 @@ async function sendCleverTapLogin(user: User, email: string) {
       Name: email,
       "MSG-push": true,
     },
+  });
+
+  await trackCleverTapEvent(eventName, {
+    "Login Method": "Email",
+    Email: email,
   });
 }
 
@@ -100,7 +110,7 @@ export function useAuth() {
       throw new Error(getAuthErrorMessage(error));
     });
 
-    await sendCleverTapLogin(credential.user, email);
+    await sendCleverTapLogin(credential.user, email, "User Logged In");
     return credential;
   }
 
@@ -112,7 +122,7 @@ export function useAuth() {
       throw new Error(getAuthErrorMessage(error));
     });
 
-    await sendCleverTapLogin(credential.user, email);
+    await sendCleverTapLogin(credential.user, email, "User Registered");
     return credential;
   }
 

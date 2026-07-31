@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ShoppingCart, Star } from "lucide-react";
 import { formatCategoryLabel, getDiscountedPrice, type Product } from "@/lib/products";
-import { trackCleverTapEvent } from "@/lib/clevertap";
+import { trackProductViewed } from "@/lib/clevertap-events";
 import { useStore } from "@/store/store";
 
 export default function ProductDetailPage() {
@@ -16,14 +16,28 @@ export default function ProductDetailPage() {
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
+    let active = true;
+
     async function loadProduct() {
-      const response = await fetch("/api/products", { cache: "force-cache" });
-      const data = await response.json();
-      const match = data.products?.find((item: Product) => item.id === id) ?? null;
-      setProduct(match);
+      try {
+        const response = await fetch("/api/products", { cache: "force-cache" });
+        if (!response.ok) return;
+        const data = await response.json();
+        const match = data.products?.find((item: Product) => item.id === id) ?? null;
+        if (!active) return;
+        setProduct(match);
+        if (match) {
+          void trackProductViewed(match);
+        }
+      } catch (error) {
+        console.error("Failed to load product:", error);
+      }
     }
 
     loadProduct();
+    return () => {
+      active = false;
+    };
   }, [id]);
 
   const discountedPrice = useMemo(() => (product ? getDiscountedPrice(product) : 0), [product]);
@@ -32,15 +46,9 @@ export default function ProductDetailPage() {
     return null;
   }
 
-  const handleAddToCart = async () => {
+  // addToCart raises the CleverTap event itself — do not raise it again here.
+  const handleAddToCart = () => {
     addToCart(product);
-    await trackCleverTapEvent("Add to Cart", {
-      "Product Name": product.name,
-      Price: product.price,
-      Category: product.category,
-      Brand: product.brand,
-      "Discount Percent": product.discountPercent,
-    });
   };
 
   return (

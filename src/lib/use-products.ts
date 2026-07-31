@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { normalizeCategory, type Product } from "@/lib/products";
+import { trackProductSearched } from "@/lib/clevertap-events";
 
 export function useProducts(pageSize = 6) {
   const [search, setSearch] = useState("");
@@ -85,6 +86,12 @@ export function useProducts(pageSize = 6) {
       return matchesSearch && matchesCategory;
     });
   }, [debouncedSearch, products, selectedCategory]);
+
+  // Fires on the debounced term, so a search is one event rather than one per keystroke.
+  useEffect(() => {
+    if (!debouncedSearch.trim()) return;
+    void trackProductSearched(debouncedSearch.trim(), filteredProducts.length);
+  }, [debouncedSearch, filteredProducts.length]);
 
   return {
     search,

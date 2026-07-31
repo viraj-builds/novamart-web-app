@@ -7,7 +7,7 @@ import { Heart, Info, ShoppingCart, Star } from "lucide-react";
 import { useStore } from "@/store/store";
 import type { Product } from "@/lib/products";
 import { getDiscountedPrice } from "@/lib/products";
-import { trackCleverTapEvent } from "@/lib/clevertap";
+import { trackAddedToWishlist, trackRemovedFromWishlist } from "@/lib/clevertap-events";
 
 type ProductCardProps = {
   product: Product;
@@ -27,17 +27,16 @@ export function ProductCard({ product, imageUrl }: ProductCardProps) {
   const isWishlisted = wishlist.includes(product.id);
   const discountedPrice = useMemo(() => getDiscountedPrice(product), [product]);
 
-  const handleAddToCart = async () => {
+  // addToCart raises the CleverTap event itself — do not raise it again here.
+  const handleAddToCart = () => {
     addToCart(product);
-    await trackCleverTapEvent("Add to Cart", {
-      "Product Name": product.name,
-      Price: product.price,
-      Category: product.category,
-      Brand: product.brand,
-      "Discount Percent": product.discountPercent,
-    });
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1200);
+  };
+
+  const handleToggleWishlist = () => {
+    toggleWishlist(product.id);
+    void (isWishlisted ? trackRemovedFromWishlist(product) : trackAddedToWishlist(product));
   };
 
   return (
@@ -82,7 +81,7 @@ export function ProductCard({ product, imageUrl }: ProductCardProps) {
         <button
           type="button"
           className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-slate-900/70"
-          onClick={() => toggleWishlist(product.id)}
+          onClick={handleToggleWishlist}
           aria-label="Toggle wishlist"
         >
           <Heart
