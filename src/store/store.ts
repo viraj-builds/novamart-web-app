@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { trackCleverTapEvent } from "@/lib/clevertap";
 import type { Product } from "@/lib/products";
 
 type CartItem = Product & { quantity: number };
@@ -23,20 +24,12 @@ export const useStore = create<StoreState>()(
       cart: [],
       wishlist: [],
       addToCart: async (product) => {
-        // Track Add to Cart in CleverTap
-        if (typeof window !== "undefined") {
-          try {
-            const clevertap = (await import("clevertap-web-sdk")).default;
-            clevertap.event.push("Add to Cart", {
-              "Product ID": product.id,
-              "Product Name": product.name,
-              "Price": product.price,
-              "Category": product.category,
-            });
-          } catch (e) {
-            console.warn("Failed to log CleverTap event", e);
-          }
-        }
+        void trackCleverTapEvent("Add to Cart", {
+          "Product ID": product.id,
+          "Product Name": product.name,
+          Price: product.price,
+          Category: product.category,
+        });
 
         set((state) => {
           const existing = state.cart.find((item) => item.id === product.id);

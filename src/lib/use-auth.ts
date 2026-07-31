@@ -41,36 +41,17 @@ function getAuthErrorMessage(error: unknown) {
   return "Unable to authenticate.";
 }
 
-async function loadCleverTap() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const module = await import("clevertap-web-sdk");
-    return module.default ?? module;
-  } catch (error) {
-    console.warn("Unable to load CleverTap SDK:", error);
-    return null;
-  }
-}
+import { sendCleverTapLoginProfile } from "@/lib/clevertap";
 
 async function sendCleverTapLogin(user: User, email: string) {
-  const clevertap = await loadCleverTap();
-  if (!clevertap) return;
-
-  try {
-    clevertap.onUserLogin.push({
-      Site: {
-        Identity: user.uid,
-        Email: email,
-        Name: email,
-        "MSG-push": true,
-      },
-    });
-  } catch (error) {
-    console.warn("CleverTap onUserLogin failed:", error);
-  }
+  await sendCleverTapLoginProfile({
+    Site: {
+      Identity: user.uid,
+      Email: email,
+      Name: email,
+      "MSG-push": true,
+    },
+  });
 }
 
 export function useAuth() {
@@ -78,23 +59,37 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const auth = getFirebaseAuth();
-      setPersistence(auth, browserLocalPersistence).catch((error) => {
-        console.warn("Failed to set Firebase persistence:", error);
-      });
+    async function initializeAuth() {
+      try {
+        const auth = getFirebaseAuth();
+        await setPersistence(auth, browserLocalPersistence).catch((error) => {
+          console.warn("Failed to set Firebase persistence:", error);
+        });
 
-      const unsubscribe = onAuthStateChanged(auth, (current) => {
-        setUser(current);
+        const unsubscribe = onAuthStateChanged(auth, (current) => {
+          setUser(current);
+          setLoading(false);
+        });
+
+        return unsubscribe;
+      } catch (error) {
+        console.error(error);
         setLoading(false);
-      });
-
-      return unsubscribe;
-    } catch (error) {
-      console.error(error);
-      setLoading(false);
-      return () => {};
+        return () => {};
+      }
     }
+
+    let unsubscribe = () => {};
+
+    initializeAuth().then((result) => {
+      if (typeof result === "function") {
+        unsubscribe = result;
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   async function login(email: string, password: string) {

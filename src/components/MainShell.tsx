@@ -7,6 +7,7 @@ import { Bell, Home, ShoppingBag, Heart, UserRound, SlidersHorizontal } from "lu
 import { Providers } from "@/app/Providers";
 import { useStore } from "@/store/store";
 import { useAuth } from "@/lib/use-auth";
+import { openCleverTapInbox } from "@/lib/clevertap";
 
 export function MainShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -70,7 +71,12 @@ export function MainShell({ children }: { children: React.ReactNode }) {
                   </Link>
                 );
               })}
-              <button className="rounded-full border border-white/10 bg-white/5 p-2.5" aria-label="Notifications">
+              <button
+                type="button"
+                className="rounded-full border border-white/10 bg-white/5 p-2.5"
+                aria-label="Open web inbox"
+                onClick={() => openCleverTapInbox()}
+              >
                 <Bell size={18} />
               </button>
               <button className="rounded-full border border-white/10 bg-white/5 p-2.5" aria-label="Filters">
@@ -81,6 +87,8 @@ export function MainShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="mx-auto flex max-w-7xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+
+        <div id="clevertap-web-inbox" />
 
         <nav className="sticky bottom-0 z-30 border-t border-white/10 bg-[#050816]/95 backdrop-blur lg:hidden">
           <div className="mx-auto flex max-w-7xl items-center justify-around px-2 py-2">

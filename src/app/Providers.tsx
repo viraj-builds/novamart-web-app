@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useStore } from "@/store/store";
+import { initCleverTap } from "@/lib/clevertap";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
   useEffect(() => {
     useStore.persist.rehydrate();
   }, []);
@@ -21,36 +25,24 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     let isMounted = true;
 
-    async function initCleverTap() {
-      try {
-        const clevertap = (await import("clevertap-web-sdk")).default;
-        if (!isMounted) return;
-
-        clevertap.privacy.push({ optOut: false });
-        clevertap.privacy.push({ useIP: false });
-        clevertap.spa = true;
-        clevertap.init(accountId, region);
-
-        clevertap.notifications.push({
-          "titleText": "Would you like to receive Push Notifications?",
-          "bodyText": "We promise to only send you relevant updates.",
-          "okButtonText": "Ok",
-          "rejectButtonText": "Cancel",
-          "askAgainTimeInSeconds": 5,
-          "serviceWorkerPath": "/clevertap_sw.js"
-        });
-        console.info("CleverTap initialized", { accountId, region });
-      } catch (error) {
-        console.warn("CleverTap initialization failed:", error);
-      }
+    async function initClient() {
+      if (!isMounted) return;
+      await initCleverTap(accountId, region);
     }
 
-    initCleverTap();
+    initClient();
 
     return () => {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (typeof window.clevertap?.pageChanged === "function") {
+      window.clevertap.pageChanged();
+    }
+  }, [pathname]);
 
   return <>{children}</>;
 }
