@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useStore } from "@/store/store";
-import { initCleverTap } from "@/lib/clevertap";
+import { initCleverTap, promptForWebPush } from "@/lib/clevertap";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -23,11 +23,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    const resolvedAccountId = accountId;
     let isMounted = true;
 
     async function initClient() {
       if (!isMounted) return;
-      await initCleverTap(accountId, region);
+      await initCleverTap(resolvedAccountId, region);
+      if (!isMounted) return;
+      await promptForWebPush();
     }
 
     initClient();

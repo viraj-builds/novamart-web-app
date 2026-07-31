@@ -88,8 +88,6 @@ export function MainShell({ children }: { children: React.ReactNode }) {
 
         <main className="mx-auto flex max-w-7xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">{children}</main>
 
-        <div id="clevertap-web-inbox" />
-
         <nav className="sticky bottom-0 z-30 border-t border-white/10 bg-[#050816]/95 backdrop-blur lg:hidden">
           <div className="mx-auto flex max-w-7xl items-center justify-around px-2 py-2">
             {navItems.map(({ href, label, icon: Icon }) => {

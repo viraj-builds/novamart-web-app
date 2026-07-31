@@ -11,6 +11,7 @@ export function useProducts(pageSize = 6) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search), 250);
@@ -21,8 +22,25 @@ export function useProducts(pageSize = 6) {
     let active = true;
     async function loadProducts() {
       setLoading(true);
-      const response = await fetch("/api/products", { cache: "force-cache" });
-      const data = await response.json();
+      setError(null);
+
+      let data: unknown;
+      try {
+        const response = await fetch("/api/products", { cache: "force-cache" });
+        data = await response.json();
+        if (!response.ok) {
+          throw new Error(`Products API responded with ${response.status}`);
+        }
+      } catch (cause) {
+        if (!active) return;
+        console.error("Failed to load products:", cause);
+        setProducts([]);
+        setCategories(["all"]);
+        setError("We could not load products right now. Please try again.");
+        setLoading(false);
+        return;
+      }
+
       if (!active) return;
 
       const dataTyped = data as { products?: Product[]; categories?: unknown[] };
@@ -78,5 +96,6 @@ export function useProducts(pageSize = 6) {
     filteredProducts,
     categories,
     loading,
+    error,
   };
 }

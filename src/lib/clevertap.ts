@@ -48,16 +48,9 @@ export async function initCleverTap(accountId: string, region = "eu1") {
     clevertap.privacy.push({ optOut: false });
     clevertap.privacy.push({ useIP: false });
     clevertap.spa = true;
+    // Required for Web Native Display and any personalisation/profile-getter API.
+    clevertap.enablePersonalization = true;
     clevertap.init(accountId, region);
-
-    clevertap.notifications.push({
-      titleText: "Would you like to receive Push Notifications?",
-      bodyText: "We promise to only send you relevant updates.",
-      okButtonText: "Allow",
-      rejectButtonText: "No thanks",
-      askAgainTimeInSeconds: 5,
-      serviceWorkerPath: "/clevertap_sw.js",
-    });
 
     if (typeof window !== "undefined") {
       window.clevertap = clevertap;
@@ -65,6 +58,39 @@ export async function initCleverTap(accountId: string, region = "eu1") {
     }
   } catch (error) {
     console.warn("Failed to initialize CleverTap:", error);
+  }
+}
+
+/**
+ * Raises the web push opt-in prompt. Keep this out of `initCleverTap` so the
+ * prompt is tied to a deliberate moment (a signed-in user, a button) rather than
+ * firing on every cold page load — browsers penalise the latter.
+ *
+ * When the dashboard uses the "new" web push box, its title/body/button copy comes
+ * from the dashboard; the values below only apply to the legacy box.
+ */
+export async function promptForWebPush() {
+  const clevertap = await getCleverTapInstance();
+  if (!clevertap) {
+    return;
+  }
+
+  const apnsWebPushId = process.env.NEXT_PUBLIC_CLEVERTAP_APNS_WEB_PUSH_ID;
+  const apnsWebPushServiceUrl = process.env.NEXT_PUBLIC_CLEVERTAP_APNS_SERVICE_URL;
+
+  try {
+    clevertap.notifications.push({
+      titleText: "Would you like to receive Push Notifications?",
+      bodyText: "We promise to only send you relevant updates.",
+      okButtonText: "Allow",
+      rejectButtonText: "No thanks",
+      askAgainTimeInSeconds: 60 * 60 * 24 * 7,
+      serviceWorkerPath: "/clevertap_sw.js",
+      // Safari on macOS needs both APNs values; omitting them leaves Safari unsupported.
+      ...(apnsWebPushId && apnsWebPushServiceUrl ? { apnsWebPushId, apnsWebPushServiceUrl } : {}),
+    });
+  } catch (error) {
+    console.warn("Failed to raise the CleverTap web push prompt:", error);
   }
 }
 

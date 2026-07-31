@@ -16,9 +16,10 @@ declare module "clevertap-web-sdk" {
   export default clevertap;
 }
 
-declare global {
-  interface Window {
-    clevertap?: import("clevertap-web-sdk").CleverTapWeb;
-    wizrocket?: import("clevertap-web-sdk").CleverTapWeb;
-  }
+// This file is an ambient script (no top-level import/export), so `interface Window`
+// merges into the global Window directly. Wrapping it in `declare global` would be
+// invalid here and is silently dropped by `skipLibCheck`.
+interface Window {
+  clevertap?: import("clevertap-web-sdk").CleverTapWeb;
+  wizrocket?: import("clevertap-web-sdk").CleverTapWeb;
 }

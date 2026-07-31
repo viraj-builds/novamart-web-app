@@ -20,6 +20,7 @@ export default function HomePage() {
     filteredProducts,
     categories,
     loading,
+    error,
   } = useProducts(PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -90,6 +91,10 @@ export default function HomePage() {
               <div className="mt-4 h-10 rounded-full bg-slate-800" />
             </div>
           ))}
+        </div>
+      ) : error ? (
+        <div className="rounded-2xl border border-dashed border-red-500/30 bg-[#111827]/70 p-10 text-center text-red-300">
+          {error}
         </div>
       ) : filteredProducts.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/10 bg-[#111827]/70 p-10 text-center text-slate-400">
