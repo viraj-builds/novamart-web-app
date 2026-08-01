@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CreditCard, Minus, Plus, Trash2 } from "lucide-react";
@@ -70,8 +71,20 @@ export default function CartPage() {
       {cart.map((item) => (
         <div key={item.id} className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#111827] p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-800 text-sm text-slate-300">
-              {item.category}
+            <div className="relative h-14 w-14 overflow-hidden rounded-xl bg-slate-800 text-sm text-slate-300">
+              {item.imageUrl ? (
+                <Image
+                  src={item.imageUrl}
+                  alt={item.name}
+                  fill
+                  sizes="56px"
+                  className="object-contain"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs text-slate-300">
+                  No image
+                </div>
+              )}
             </div>
             <div>
               <p className="font-semibold text-white">{item.name}</p>

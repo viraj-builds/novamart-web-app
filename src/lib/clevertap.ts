@@ -54,9 +54,26 @@ export async function initCleverTap(accountId: string, region = "eu1") {
     clevertap.enablePersonalization = true;
     clevertap.init(accountId, region);
 
+    if (typeof clevertap.enableWebPush === "function") {
+      clevertap.enableWebPush(true);
+    }
+
+    clevertap.notifications.push({
+      titleText: "Would you like to receive Push Notifications?",
+      bodyText: "We promise to only send you relevant updates.",
+      okButtonText: "Allow",
+      rejectButtonText: "No thanks",
+      askAgainTimeInSeconds: 5,
+      serviceWorkerPath: "/clevertap_sw.js",
+    });
+
     if (typeof window !== "undefined") {
       window.clevertap = clevertap;
       window.wizrocket = clevertap;
+    }
+
+    if (typeof clevertap.pageChanged === "function") {
+      clevertap.pageChanged();
     }
   } catch (error) {
     console.warn("Failed to initialize CleverTap:", error);
