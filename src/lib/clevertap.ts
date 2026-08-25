@@ -54,18 +54,11 @@ export async function initCleverTap(accountId: string, region = "eu1") {
     clevertap.enablePersonalization = true;
     clevertap.init(accountId, region);
 
-    if (typeof clevertap.enableWebPush === "function") {
-      clevertap.enableWebPush(true);
-    }
-
-    clevertap.notifications.push({
-      titleText: "Would you like to receive Push Notifications?",
-      bodyText: "We promise to only send you relevant updates.",
-      okButtonText: "Allow",
-      rejectButtonText: "No thanks",
-      askAgainTimeInSeconds: 5,
-      serviceWorkerPath: "/clevertap_sw.js",
-    });
+    // Apply the VAPID public key immediately after init so it is available
+    // before any subscription attempt. The key must be set here (not deferred)
+    // because pushManager.subscribe() will fire without it if the CleverTap
+    // backend response is slow, causing "missing applicationServerKey" errors.
+    applyVapidKey(clevertap);
 
     if (typeof window !== "undefined") {
       window.clevertap = clevertap;
@@ -75,6 +68,11 @@ export async function initCleverTap(accountId: string, region = "eu1") {
     if (typeof clevertap.pageChanged === "function") {
       clevertap.pageChanged();
     }
+    // NOTE: Do NOT call clevertap.notifications.push() here.
+    // Push opt-in prompts must be triggered by promptForWebPush() at a
+    // deliberate moment (e.g. after login, after a transaction). Firing
+    // on every cold load is penalised by browsers and guaranteed to race
+    // against the VAPID key arriving from the CleverTap backend.
   } catch (error) {
     console.warn("Failed to initialize CleverTap:", error);
   }

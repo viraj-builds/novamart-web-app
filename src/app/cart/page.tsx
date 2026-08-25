@@ -41,7 +41,20 @@ export default function CartPage() {
     try {
       await trackCheckoutStarted(items, amount);
       await trackCharged(items, amount, chargedId);
+
+      // Signal CleverTap to re-evaluate campaigns after the Charged event.
+      // Web pop-up campaigns triggered by "Charged" need pageChanged() so the
+      // SDK fetches the campaign from the backend and injects it into the DOM.
+      if (typeof window.clevertap?.pageChanged === "function") {
+        window.clevertap.pageChanged();
+      }
+
       setLastOrderId(chargedId);
+
+      // Delay clearing the cart so the CleverTap SDK has time to receive the
+      // campaign response from the server and render the web pop-up.
+      // Clearing immediately causes rapid DOM re-renders that can drop the pop-up.
+      await new Promise<void>((resolve) => setTimeout(resolve, 3000));
       clearCart();
     } finally {
       setCheckingOut(false);

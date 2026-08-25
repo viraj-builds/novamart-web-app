@@ -65,6 +65,7 @@ async function sendCleverTapLogin(user: User, email: string, eventName: string) 
       Email: email,
       Name: email,
       "MSG-push": true,
+      test: " ",
     },
   });
 
