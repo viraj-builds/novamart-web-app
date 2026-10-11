@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CreditCard, Minus, Plus, Trash2 } from "lucide-react";
@@ -40,7 +41,20 @@ export default function CartPage() {
     try {
       await trackCheckoutStarted(items, amount);
       await trackCharged(items, amount, chargedId);
+
+      // Signal CleverTap to re-evaluate campaigns after the Charged event.
+      // Web pop-up campaigns triggered by "Charged" need pageChanged() so the
+      // SDK fetches the campaign from the backend and injects it into the DOM.
+      if (typeof window.clevertap?.pageChanged === "function") {
+        window.clevertap.pageChanged();
+      }
+
       setLastOrderId(chargedId);
+
+      // Delay clearing the cart so the CleverTap SDK has time to receive the
+      // campaign response from the server and render the web pop-up.
+      // Clearing immediately causes rapid DOM re-renders that can drop the pop-up.
+      await new Promise<void>((resolve) => setTimeout(resolve, 3000));
       clearCart();
     } finally {
       setCheckingOut(false);
@@ -70,8 +84,20 @@ export default function CartPage() {
       {cart.map((item) => (
         <div key={item.id} className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#111827] p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-800 text-sm text-slate-300">
-              {item.category}
+            <div className="relative h-14 w-14 overflow-hidden rounded-xl bg-slate-800 text-sm text-slate-300">
+              {item.imageUrl ? (
+                <Image
+                  src={item.imageUrl}
+                  alt={item.name}
+                  fill
+                  sizes="56px"
+                  className="object-contain"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs text-slate-300">
+                  No image
+                </div>
+              )}
             </div>
             <div>
               <p className="font-semibold text-white">{item.name}</p>

@@ -18,6 +18,7 @@ export function ProductCard({ product, imageUrl }: ProductCardProps) {
   const [mounted, setMounted] = useState(false);
   const [showSpecs, setShowSpecs] = useState(false);
   const [added, setAdded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const wishlist = useStore((state) => state.wishlist);
   const toggleWishlist = useStore((state) => state.toggleWishlist);
   const addToCart = useStore((state) => state.addToCart);
@@ -42,7 +43,7 @@ export function ProductCard({ product, imageUrl }: ProductCardProps) {
   return (
     <article className="rounded-2xl border border-white/10 bg-[#111827] p-4 shadow-lg shadow-black/20">
       <div className="relative h-64 overflow-hidden rounded-xl bg-slate-950">
-        {imageUrl ? (
+        {imageUrl && !imageError ? (
           <Image
             src={imageUrl}
             alt={product.name}
@@ -51,9 +52,12 @@ export function ProductCard({ product, imageUrl }: ProductCardProps) {
             className="object-contain"
             loading="eager"
             priority
+            onError={() => setImageError(true)}
           />
         ) : (
-          <div className="h-full w-full animate-pulse bg-slate-800" />
+          <div className="flex h-full w-full items-center justify-center bg-slate-800 text-sm text-slate-400">
+            Image unavailable
+          </div>
         )}
         {product.discountPercent > 0 && (
           <span className="absolute left-3 top-3 rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold text-white">
