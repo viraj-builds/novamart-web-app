@@ -4,15 +4,23 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useStore } from "@/store/store";
 import {
+  identifyCleverTapUser,
   initCleverTap,
   promptForWebPush,
   reRegisterWebPushForCurrentUser,
+  type CleverTapUser,
 } from "@/lib/clevertap";
 
 /** Time for CleverTap's response — which carries the VAPID key — to land after init. */
 const PUSH_CONFIG_SETTLE_MS = 3000;
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  user = null,
+}: {
+  children: React.ReactNode;
+  user?: CleverTapUser | null;
+}) {
   const pathname = usePathname();
 
   useEffect(() => {
@@ -64,6 +72,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
       if (pushTimer !== undefined) window.clearTimeout(pushTimer);
     };
   }, []);
+
+  // A user restored from a persisted Firebase session never passes through login(),
+  // so identify them here. Declared after the init effect so init has already started.
+  const uid = user?.uid;
+  const email = user?.email ?? null;
+  const displayName = user?.displayName ?? null;
+  useEffect(() => {
+    if (!uid) return;
+    void identifyCleverTapUser({ uid, email, displayName });
+  }, [uid, email, displayName]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

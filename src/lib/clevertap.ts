@@ -40,7 +40,18 @@ async function getCleverTapInstance(): Promise<CleverTapWeb | null> {
   return getGlobalCleverTap() ?? loadCleverTap();
 }
 
-export async function initCleverTap(accountId: string, region = "eu1") {
+let initPromise: Promise<void> | null = null;
+
+/**
+ * Idempotent: Providers can mount more than once (StrictMode, nested layouts), and a
+ * second clevertap.init() would re-run the SDK's bootstrap against the same account.
+ */
+export function initCleverTap(accountId: string, region = "eu1") {
+  initPromise ??= runInitCleverTap(accountId, region);
+  return initPromise;
+}
+
+async function runInitCleverTap(accountId: string, region: string) {
   const clevertap = await getCleverTapInstance();
   if (!clevertap) {
     return;
@@ -183,17 +194,76 @@ export async function trackCleverTapEvent(eventName: string, properties?: Record
   }
 }
 
-export async function sendCleverTapLoginProfile(profile: Record<string, unknown>) {
-  const clevertap = await getCleverTapInstance();
+/**
+ * onUserLogin swaps the guid on the server round-trip, so the push token has to be
+ * re-registered *after* that has landed. There is no callback for it, hence the wait.
+ */
+const GUID_SWITCH_SETTLE_MS = 2500;
+const IDENTIFIED_UID_KEY = "novamart_ct_identified_uid";
+let identifiedUid: string | null = null;
+
+function readIdentifiedUid() {
+  try {
+    return window.sessionStorage.getItem(IDENTIFIED_UID_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeIdentifiedUid(uid: string) {
+  try {
+    window.sessionStorage.setItem(IDENTIFIED_UID_KEY, uid);
+  } catch {
+    // Storage blocked; we just re-identify on the next load, which is harmless.
+  }
+}
+
+export type CleverTapUser = { uid: string; email: string | null; displayName?: string | null };
+
+/**
+ * The single place onUserLogin is called. It runs for an explicit login/sign-up AND
+ * for a user whose Firebase session was restored on page load — without the latter,
+ * anyone who was already signed in (or signed in before the SDK was added) stays an
+ * anonymous profile forever.
+ *
+ * Guarded to once per tab session per uid, so the login call and the restore call
+ * that fires from onAuthStateChanged don't both switch the identity.
+ */
+export async function identifyCleverTapUser(user: CleverTapUser) {
+  if (typeof window === "undefined") return;
+  if (identifiedUid === user.uid || readIdentifiedUid() === user.uid) {
+    identifiedUid = user.uid;
+    return;
+  }
+  identifiedUid = user.uid;
+
+  await (initPromise ?? Promise.resolve());
+  // Only an initialised SDK is published on window; anything else has no account.
+  const clevertap = getGlobalCleverTap();
   if (!clevertap) {
+    identifiedUid = null;
     return;
   }
 
+  // Never send empty values: CleverTap stores them, overwriting good data.
+  const site: Record<string, unknown> = { Identity: user.uid, "MSG-push": true };
+  if (user.email) site.Email = user.email;
+  if (user.displayName) site.Name = user.displayName;
+
   try {
-    clevertap.onUserLogin.push(profile);
+    clevertap.onUserLogin.push({ Site: site });
+    writeIdentifiedUid(user.uid);
   } catch (error) {
+    identifiedUid = null;
     console.warn("Failed to push CleverTap login profile:", error);
+    return;
   }
+
+  // Re-attach the push token to the profile we just switched to, otherwise every
+  // push campaign targeting this user has nothing to deliver to.
+  window.setTimeout(() => {
+    void reRegisterWebPushForCurrentUser();
+  }, GUID_SWITCH_SETTLE_MS);
 }
 
 /*

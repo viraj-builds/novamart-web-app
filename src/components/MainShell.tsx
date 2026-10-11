@@ -26,27 +26,33 @@ export function MainShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading) return;
     if (!user && pathname !== "/login") {
-      router.replace("/login");
+      // Keep the query string: utm_* params are what CleverTap reads to raise
+      // "UTM Visited", and dropping them here loses attribution for new visitors.
+      router.replace(`/login${window.location.search}`);
     }
     if (user && pathname === "/login") {
       router.replace("/");
     }
   }, [loading, user, pathname, router]);
 
+  // Providers wraps the loading state too, so the SDK starts on first paint (the
+  // checklist's "SDK in head") instead of waiting for Firebase to resolve the session.
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050816] text-slate-100">
-        <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
-          <div className="rounded-3xl border border-white/10 bg-[#111827] p-10 text-slate-300 shadow-lg">
-            <p className="text-lg font-medium">Checking your login status...</p>
+      <Providers user={null}>
+        <div className="min-h-screen bg-[#050816] text-slate-100">
+          <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
+            <div className="rounded-3xl border border-white/10 bg-[#111827] p-10 text-slate-300 shadow-lg">
+              <p className="text-lg font-medium">Checking your login status...</p>
+            </div>
           </div>
         </div>
-      </div>
+      </Providers>
     );
   }
 
   return (
-    <Providers>
+    <Providers user={user}>
       <div className="min-h-screen bg-[#050816] text-slate-100">
         <header className="sticky top-0 z-30 border-b border-white/10 bg-[#050816]/90 backdrop-blur">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
