@@ -1,3 +1,5 @@
+import type { UserProfile } from "@/lib/user-profile";
+
 export interface CleverTapWeb {
   event: { push: (name: string, properties?: Record<string, unknown>) => void };
   profile?: { push: (profile: Record<string, unknown>) => void };
@@ -11,6 +13,7 @@ export interface CleverTapWeb {
   getInboxMessageUnreadCount?: () => number;
   getInboxMessageCount?: () => number;
   renderNotificationViewed?: (payload: { msgId: string; pivotId?: string }) => void;
+  getLocation?: () => void;
   [key: string]: unknown;
 }
 
@@ -58,8 +61,11 @@ async function runInitCleverTap(accountId: string, region: string) {
   }
 
   try {
+    // GDPR flags (developer.clevertap.com/docs/advanced-configurations#gdpr). useIP lets
+    // CleverTap derive city / country from the visitor's IP — without it web profiles
+    // have no location at all. Set NEXT_PUBLIC_CLEVERTAP_USE_IP=false to turn it off.
     clevertap.privacy.push({ optOut: false });
-    clevertap.privacy.push({ useIP: false });
+    clevertap.privacy.push({ useIP: process.env.NEXT_PUBLIC_CLEVERTAP_USE_IP !== "false" });
     clevertap.spa = true;
     // Required for Web Native Display and any personalisation/profile-getter API.
     clevertap.enablePersonalization = true;
@@ -233,7 +239,30 @@ function writeIdentifiedUid(uid: string) {
   }
 }
 
-export type CleverTapUser = { uid: string; email: string | null; displayName?: string | null };
+export type CleverTapUser = { uid: string; email: string | null; displayName?: string | null; profile?: UserProfile };
+
+/**
+ * Turns NovaMart's profile into CleverTap's "Site" object. Empty values are left out
+ * (CleverTap would store them and overwrite good data), the phone is already E.164,
+ * and DOB goes as a Date so the SDK sends it as a real date ($D_epoch), not text.
+ */
+export function profileToSite(profile: UserProfile & { name?: string | null }): Record<string, unknown> {
+  const site: Record<string, unknown> = {};
+  if (profile.name?.trim()) site.Name = profile.name.trim();
+  if (profile.phone) site.Phone = profile.phone;
+  if (profile.gender) site.Gender = profile.gender;
+  if (profile.dob) {
+    const d = new Date(`${profile.dob}T00:00:00`);
+    if (!Number.isNaN(d.getTime())) site.DOB = d;
+  }
+  if (profile.city?.trim()) site.City = profile.city.trim();
+  if (profile.favouriteCategory) site["Favourite Category"] = profile.favouriteCategory;
+  if (profile.msgEmail !== undefined) site["MSG-email"] = profile.msgEmail;
+  if (profile.msgPush !== undefined) site["MSG-push"] = profile.msgPush;
+  if (profile.msgSms !== undefined) site["MSG-sms"] = profile.msgSms;
+  if (profile.msgWhatsapp !== undefined) site["MSG-whatsapp"] = profile.msgWhatsapp;
+  return site;
+}
 
 /**
  * The single place onUserLogin is called. It runs for an explicit login/sign-up AND
@@ -261,9 +290,12 @@ export async function identifyCleverTapUser(user: CleverTapUser) {
   }
 
   // Never send empty values: CleverTap stores them, overwriting good data.
-  const site: Record<string, unknown> = { Identity: user.uid, "MSG-push": true };
+  const site: Record<string, unknown> = {
+    "MSG-push": true,
+    ...profileToSite({ ...user.profile, name: user.profile?.name ?? user.displayName ?? undefined }),
+    Identity: user.uid,
+  };
   if (user.email) site.Email = user.email;
-  if (user.displayName) site.Name = user.displayName;
 
   try {
     clevertap.onUserLogin.push({ Site: site });
@@ -288,3 +320,38 @@ export async function identifyCleverTapUser(user: CleverTapUser) {
  * trigger element the id configured on the campaign and let the SDK's own document
  * click listener handle it — see the bell button in MainShell.
  */
+
+/**
+ * Profile edits outside login / sign-up go through profile.push — it updates the
+ * profile that is already identified (onUserLogin is only for switching users).
+ * Also raises "Profile Updated" so campaigns can react to it.
+ */
+export async function updateCleverTapProfile(profile: UserProfile & { name?: string | null }) {
+  const clevertap = getGlobalCleverTap() ?? (await getCleverTapInstance());
+  if (!clevertap?.profile) return;
+  const site = profileToSite(profile);
+  if (!Object.keys(site).length) return;
+  try {
+    clevertap.profile.push({ Site: site });
+    clevertap.event.push("Profile Updated", { "Fields Updated": Object.keys(site).join(", ") });
+  } catch (error) {
+    console.warn("Failed to update the CleverTap profile:", error);
+  }
+}
+
+/**
+ * Asks the browser for the visitor's precise location and hands it to CleverTap
+ * (lat / long on the profile). Only call it from a user action — browsers block
+ * geolocation prompts that appear on their own.
+ */
+export async function shareLocationWithCleverTap() {
+  const clevertap = getGlobalCleverTap() ?? (await getCleverTapInstance());
+  if (typeof clevertap?.getLocation !== "function") return false;
+  try {
+    clevertap.getLocation();
+    return true;
+  } catch (error) {
+    console.warn("Failed to share location with CleverTap:", error);
+    return false;
+  }
+}

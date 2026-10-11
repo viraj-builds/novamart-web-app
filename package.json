@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "clevertap-web-sdk": "^2.7.3",
+    "clevertap-web-sdk": "^3.0.3",
     "firebase": "^12.16.0",
     "lucide-react": "^1.24.0",
     "next": "16.2.10",

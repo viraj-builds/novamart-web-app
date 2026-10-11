@@ -9,6 +9,7 @@ import {
   signOut,
   onAuthStateChanged,
   setPersistence,
+  updateProfile,
   type User,
 } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
@@ -42,19 +43,21 @@ function getAuthErrorMessage(error: unknown) {
 }
 
 import { identifyCleverTapUser, trackCleverTapEvent } from "@/lib/clevertap";
+import { readProfile, saveProfile, type UserProfile } from "@/lib/user-profile";
+
+export type SignUpDetails = { name?: string; phone?: string };
 
 /**
  * `onUserLogin.push` only identifies the profile — it does NOT raise an event.
  * A campaign that qualifies on "User Logged In" will never fire unless the app
  * raises that event explicitly, which is what the second call here does.
  */
-async function sendCleverTapLogin(user: User, email: string, eventName: string) {
-  await identifyCleverTapUser({ uid: user.uid, email, displayName: user.displayName });
+async function sendCleverTapLogin(user: User, email: string, eventName: string, profile: UserProfile) {
+  // onUserLogin carries Identity + Email + the phone (E.164) and other saved details.
+  await identifyCleverTapUser({ uid: user.uid, email, displayName: user.displayName, profile });
 
-  await trackCleverTapEvent(eventName, {
-    "Login Method": "Email",
-    Email: email,
-  });
+  // No PII in event properties — it already lives on the profile.
+  await trackCleverTapEvent(eventName, { "Login Method": "Email", "Has Phone": Boolean(profile.phone) });
 }
 
 export function useAuth() {
@@ -103,11 +106,11 @@ export function useAuth() {
       throw new Error(getAuthErrorMessage(error));
     });
 
-    await sendCleverTapLogin(credential.user, email, "User Logged In");
+    await sendCleverTapLogin(credential.user, email, "User Logged In", readProfile(credential.user.uid));
     return credential;
   }
 
-  async function register(email: string, password: string) {
+  async function register(email: string, password: string, details: SignUpDetails = {}) {
     const auth = getFirebaseAuth();
     await setPersistence(auth, browserLocalPersistence);
 
@@ -115,7 +118,15 @@ export function useAuth() {
       throw new Error(getAuthErrorMessage(error));
     });
 
-    await sendCleverTapLogin(credential.user, email, "User Registered");
+    const name = details.name?.trim();
+    if (name) await updateProfile(credential.user, { displayName: name }).catch(() => {});
+    const profile = saveProfile(credential.user.uid, {
+      ...(name ? { name } : {}),
+      ...(details.phone ? { phone: details.phone } : {}),
+      msgEmail: true,
+      msgPush: true,
+    });
+    await sendCleverTapLogin(credential.user, email, "User Registered", profile);
     return credential;
   }
 

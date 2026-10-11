@@ -10,6 +10,7 @@ import {
   reRegisterWebPushForCurrentUser,
   type CleverTapUser,
 } from "@/lib/clevertap";
+import { readProfile } from "@/lib/user-profile";
 
 /** Time for CleverTap's response — which carries the VAPID key — to land after init. */
 const PUSH_CONFIG_SETTLE_MS = 3000;
@@ -77,7 +78,8 @@ export function Providers({
   const displayName = user?.displayName ?? null;
   useEffect(() => {
     if (!uid) return;
-    void identifyCleverTapUser({ uid, email, displayName });
+    // Include the saved phone / details so a restored session is identified fully too.
+    void identifyCleverTapUser({ uid, email, displayName, profile: readProfile(uid) });
   }, [uid, email, displayName]);
 
   useEffect(() => {
