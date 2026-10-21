@@ -25,37 +25,16 @@ export function MainShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) return;
-    if (!user && pathname !== "/login") {
-      // Keep the query string: utm_* params are what CleverTap reads to raise
-      // "UTM Visited", and dropping them here loses attribution for new visitors.
-      router.replace(`/login${window.location.search}`);
-    }
+    // Only redirect if a logged-in user visits /login
     if (user && pathname === "/login") {
       router.replace("/");
     }
   }, [loading, user, pathname, router]);
 
-  // Providers wraps the loading state too, so the SDK starts on first paint (the
-  // checklist's "SDK in head") instead of waiting for Firebase to resolve the session.
-  if (loading) {
+  // Dedicated bare view for the sign-in / registration page
+  if (pathname === "/login") {
     return (
-      <Providers user={null}>
-        <div className="min-h-screen bg-[#050816] text-slate-100">
-          <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
-            <div className="rounded-3xl border border-white/10 bg-[#111827] p-10 text-slate-300 shadow-lg">
-              <p className="text-lg font-medium">Checking your login status...</p>
-            </div>
-          </div>
-        </div>
-      </Providers>
-    );
-  }
-
-  // Landing = login page — render bare (no header, no nav) so the first
-  // thing an unauthenticated visitor sees is only the sign-in form.
-  if (!user) {
-    return (
-      <Providers user={null}>
+      <Providers user={user}>
         <div className="min-h-screen bg-[#050816] text-slate-100">
           {children}
         </div>
@@ -63,13 +42,13 @@ export function MainShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Authenticated: render the full shell with header and bottom nav.
+  // Render the full store shell for both anonymous and authenticated visitors
   return (
     <Providers user={user}>
       <div className="min-h-screen bg-[#050816] text-slate-100">
         <header className="sticky top-0 z-30 border-b border-white/10 bg-[#050816]/90 backdrop-blur">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-lg font-semibold text-white">
                 N
               </div>
@@ -77,7 +56,7 @@ export function MainShell({ children }: { children: React.ReactNode }) {
                 <p className="text-lg font-semibold tracking-wide">NovaMart</p>
                 <p className="text-sm text-slate-400">Shop everything you want</p>
               </div>
-            </div>
+            </Link>
             <div className="flex flex-wrap items-center gap-3">
               {navItems.map(({ href, label }) => {
                 const active = pathname === href;

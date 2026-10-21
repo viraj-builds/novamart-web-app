@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/use-auth";
 import { COUNTRY_CODES, toE164 } from "@/lib/user-profile";
@@ -159,6 +160,11 @@ export default function LoginPage() {
           >
             {mode === "login" ? "Create an account" : "Already have an account? Sign in"}
           </button>
+        </div>
+        <div className="mt-6 text-center text-sm">
+          <Link href="/" className="text-slate-400 hover:text-white transition">
+            ← Continue browsing as guest
+          </Link>
         </div>
       </div>
     </div>
