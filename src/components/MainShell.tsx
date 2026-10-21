@@ -51,6 +51,19 @@ export function MainShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Landing = login page — render bare (no header, no nav) so the first
+  // thing an unauthenticated visitor sees is only the sign-in form.
+  if (!user) {
+    return (
+      <Providers user={null}>
+        <div className="min-h-screen bg-[#050816] text-slate-100">
+          {children}
+        </div>
+      </Providers>
+    );
+  }
+
+  // Authenticated: render the full shell with header and bottom nav.
   return (
     <Providers user={user}>
       <div className="min-h-screen bg-[#050816] text-slate-100">

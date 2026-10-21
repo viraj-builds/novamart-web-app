@@ -54,7 +54,10 @@ export function Providers({
         pushTimer = window.setTimeout(() => {
           void reRegisterWebPushForCurrentUser();
         }, PUSH_CONFIG_SETTLE_MS);
-      } else {
+      } else if (pathname !== "/login") {
+        // Only prompt authenticated visitors — prompting unauthenticated users
+        // creates orphaned tokens with no profile to attach to, and browsers
+        // penalise sites that ask for push permission on cold anonymous loads.
         await promptForWebPush();
       }
 
